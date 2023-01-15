@@ -1,6 +1,6 @@
 
 const W = 400;
-const SIZE = 50;
+const SIZE = 40;
 let tileWidth = 0;
 
 const tiles = [];
@@ -22,15 +22,18 @@ function setup() {
     tiles[2] = new Tile(images[1], ["0", "1", "1", "1"]).rotate(1);
     tiles[3] = new Tile(images[1], ["0", "1", "1", "1"]).rotate(2);
     tiles[4] = new Tile(images[1], ["0", "1", "1", "1"]).rotate(3);
-    for (let i = 0; i < SIZE * SIZE; i++) {
-        grid[i] = new Cell(false, Array.from(tiles.keys()));
-    }
+    fillGrid();
     for (const tile of tiles) {
         tile.analyze(tiles);
     }
     console.table(tiles);
-   
+
     createCanvas(W, W);
+}
+function fillGrid(){
+    for (let i = 0; i < SIZE * SIZE; i++) {
+        grid[i] = new Cell(false, Array.from(tiles.keys()));
+    }
 }
 
 function mousePressed() {
@@ -51,7 +54,7 @@ function draw() {
             }
         }
     }
-    if(!collapseRandom())return;
+    if (!collapseRandom()) return;
     grid = nextGeneration();
     // console.table(grid);
     // noLoop();
@@ -66,7 +69,7 @@ function checkValidation(arr, valid) {
     }
 }
 
-function nextGeneration(){
+function nextGeneration() {
     const next = [];
     for (let j = 0; j < SIZE; j++) {
         for (let i = 0; i < SIZE; i++) {
@@ -76,7 +79,6 @@ function nextGeneration(){
                 next[index] = cell;
             } else {
                 const options = cell.available.slice();
-
                 //Check above
                 if (j > 0) {
                     const secondCell = grid[i + (j - 1) * SIZE];
@@ -103,7 +105,8 @@ function nextGeneration(){
                         valid = valid.concat(tiles[avl].right)
                     }
                     checkValidation(options, valid);
-                }//Check right
+                }
+                //Check right
                 if (i < SIZE - 1) {
                     const secondCell = grid[i + 1 + j * SIZE];
                     let valid = [];
@@ -122,9 +125,9 @@ function nextGeneration(){
 }
 
 
-function collapseRandom(){
+function collapseRandom(rec) {
     let sorted = grid.slice().filter((v) => !v.collapsed);
-    if(sorted.length<1)return false;
+    if (sorted.length < 1) return false;
     sorted = sorted.sort((a, b) => a.available.length - b.available.length);
 
     let stopI = 0;
@@ -139,8 +142,41 @@ function collapseRandom(){
         sorted.splice(stopI);
     }
 
-    const pick = random(sorted);
+    if(rec != undefined){
+        sorted.splice(rec,1);
+    }
+
+    if(sorted.length < 1){
+        //start over
+        console.log("[WFC] Starting Over..")
+        fillGrid();
+        return true;
+    }
+
+    const i = randomI(sorted.length);
+    const pick = sorted[i];
+    const rnd = getRnd(pick.available);
+
+    if(rnd == undefined){
+        console.log("[WFC] Reloading Available possibilities..")
+        return collapseRandom(i);
+    }
+
+    pick.available = [rnd];
     pick.collapsed = true;
-    pick.available = [random(pick.available)];
     return true;
+}
+
+function getRnd(arr) {
+    if (arr.length < 1) return undefined;
+    const i = randomI(arr.length);
+    
+    let res = arr[i];
+    if (res == undefined) {
+        return getRnd(arr.slice().splice(i, 1));
+    }
+    return res;
+}
+function randomI(max) {
+    return Math.floor(Math.random() * max);
 }
