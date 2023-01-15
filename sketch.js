@@ -1,61 +1,102 @@
 
-const W = 400;
-const SIZE = 40;
+const W = 500;
+const SIZE = 20;
+const ASSET = "./tiles/Circuit/"
 let tileWidth = 0;
 
 const tiles = [];
 const images = [];
 let grid = [];
-
+const DUMMY = []
 
 function preload() {
-    images[0] = loadImage('tiles/blank.png');
-    images[1] = loadImage('tiles/down.png');
 
+    for (let i = 0; i < 14; i++) {
+        images[i] = loadImage(ASSET + (i + 1) + '.png');
+    }
 }
 
 
 function setup() {
     tileWidth = W / SIZE;
-    tiles[0] = new Tile(images[0], ["0", "0", "0", "0"]);
-    tiles[1] = new Tile(images[1], ["0", "1", "1", "1"]);
-    tiles[2] = new Tile(images[1], ["0", "1", "1", "1"]).rotate(1);
-    tiles[3] = new Tile(images[1], ["0", "1", "1", "1"]).rotate(2);
-    tiles[4] = new Tile(images[1], ["0", "1", "1", "1"]).rotate(3);
-    fillGrid();
+    tiles.push(new Tile(images[0], ["BCB", "BGB", "BCB", "BGB"], true, false));
+    tiles.push(new Tile(images[1], ["DDD", "DDD", "DDD", "DDD"]));
+    tiles.push(new Tile(images[2], ["BCB", "BBD", "DDD", "DBB"], true));
+    tiles.push(new Tile(images[3], ["BBB", "BBB", "BBD", "DBB"], true));
+    tiles.push(new Tile(images[4], ["BCB", "BCB", "BCB", "BCB"], true, false));
+    tiles.push(new Tile(images[5], ["BCB", "BCB", "BBB", "BBB"], true));
+    tiles.push(new Tile(images[6], ["BBB", "BBB", "BBB", "BBB"]));
+    tiles.push(new Tile(images[7], ["BBB", "BCB", "BCB", "BCB"], true));
+    tiles.push(new Tile(images[8], ["BCB", "BBB", "BCB", "BBB"], true, false));
+    tiles.push(new Tile(images[9], ["BGB", "BBB", "BCB", "BBB"], true));
+    tiles.push(new Tile(images[10], ["BCB", "BCB", "BBB", "BBB"], true));
+    tiles.push(new Tile(images[11], ["BBB", "BCB", "BBB", "BCB"], true, false));
+    tiles.push(new Tile(images[12], ["BCB", "BBB", "BBB", "BBB"], true));
+    tiles.push(new Tile(images[13], ["BBB", "BGB", "BBB", "BGB"], true, false));
+
+    // console.log();
+    // const a = tiles[2].edges;
+    // console.log(a);
+    // const b = tiles[2].rotate(1);
+    // console.log(b.edges);
+    // const c = b.rotate(1).edges;
+    // console.log(c);
+    // console.log(a);
+    for (const tile of tiles) {
+        if (tile.shouldRotate) {
+            const a = tile.rotate(1);
+            tiles.push(a);
+            if (tile.fullRotate) {
+                const b = a.rotate(1);
+                tiles.push(b);
+                tiles.push(b.rotate(1));
+            }
+        }
+    }
+
+    let i = 0;
     for (const tile of tiles) {
         tile.analyze(tiles);
+        DUMMY.push(i);
+        i++;
     }
+    fillGrid();
     console.table(tiles);
 
     createCanvas(W, W);
 }
-function fillGrid(){
-    for (let i = 0; i < SIZE * SIZE; i++) {
-        grid[i] = new Cell(false, Array.from(tiles.keys()));
-    }
+function fillGrid() {
+    grid = [];
+    // for (let i = 0; i < SIZE * SIZE; i++) {
+    //     grid[i] = new Cell(false, Array.from(tiles.keys()));
+    // }
 }
+
 
 function mousePressed() {
     redraw();
 }
 function draw() {
     background(200);
+
     for (let j = 0; j < SIZE; j++) {
         for (let i = 0; i < SIZE; i++) {
             const index = i + j * SIZE;
             const cell = grid[index];
-            if (cell.collapsed) {
-                image(tiles[cell.available[0]].img, tileWidth * i, tileWidth * j, tileWidth, tileWidth);
-            } else {
+            if (cell == undefined || !cell.collapsed) {
                 fill(0);
                 stroke(150)
                 rect(tileWidth * i, tileWidth * j, tileWidth, tileWidth);
+            }
+            else {
+                image(tiles[cell.available[0]].img, tileWidth * i, tileWidth * j, tileWidth, tileWidth);
             }
         }
     }
     if (!collapseRandom()) return;
     grid = nextGeneration();
+
+
     // console.table(grid);
     // noLoop();
 }
@@ -74,14 +115,15 @@ function nextGeneration() {
     for (let j = 0; j < SIZE; j++) {
         for (let i = 0; i < SIZE; i++) {
             const index = i + j * SIZE;
-            const cell = grid[index];
+            const cell = getCell(index);
             if (cell.collapsed) {
                 next[index] = cell;
             } else {
                 const options = cell.available.slice();
+
                 //Check above
                 if (j > 0) {
-                    const secondCell = grid[i + (j - 1) * SIZE];
+                    const secondCell = getCell(i + (j - 1) * SIZE);
                     let valid = [];
                     for (const avl of secondCell.available) {
                         valid = valid.concat(tiles[avl].up)
@@ -90,7 +132,7 @@ function nextGeneration() {
                 }
                 //Check down
                 if (j < SIZE - 1) {
-                    const secondCell = grid[i + (j + 1) * SIZE];
+                    const secondCell = getCell(i + (j + 1) * SIZE);
                     let valid = [];
                     for (const avl of secondCell.available) {
                         valid = valid.concat(tiles[avl].down)
@@ -99,7 +141,7 @@ function nextGeneration() {
                 }
                 //Check left
                 if (i > 0) {
-                    const secondCell = grid[i - 1 + j * SIZE];
+                    const secondCell = getCell(i - 1 + j * SIZE);
                     let valid = [];
                     for (const avl of secondCell.available) {
                         valid = valid.concat(tiles[avl].right)
@@ -108,7 +150,7 @@ function nextGeneration() {
                 }
                 //Check right
                 if (i < SIZE - 1) {
-                    const secondCell = grid[i + 1 + j * SIZE];
+                    const secondCell = getCell(i + 1 + j * SIZE);
                     let valid = [];
                     for (const avl of secondCell.available) {
                         valid = valid.concat(tiles[avl].left)
@@ -125,8 +167,12 @@ function nextGeneration() {
 }
 
 
-function collapseRandom(rec) {
+function collapseRandom() {
+    if (grid.length == 0) {
+        grid[0] = getCell(0);
+    }
     let sorted = grid.slice().filter((v) => !v.collapsed);
+
     if (sorted.length < 1) return false;
     sorted = sorted.sort((a, b) => a.available.length - b.available.length);
 
@@ -142,24 +188,14 @@ function collapseRandom(rec) {
         sorted.splice(stopI);
     }
 
-    if(rec != undefined){
-        sorted.splice(rec,1);
-    }
-
-    if(sorted.length < 1){
-        //start over
-        console.log("[WFC] Starting Over..")
-        fillGrid();
-        return true;
-    }
-
     const i = randomI(sorted.length);
     const pick = sorted[i];
     const rnd = getRnd(pick.available);
 
-    if(rnd == undefined){
-        console.log("[WFC] Reloading Available possibilities..")
-        return collapseRandom(i);
+    if (rnd == undefined) {
+        fillGrid();
+        console.log("[WFC] Starting Over..")
+        return false;
     }
 
     pick.available = [rnd];
@@ -167,16 +203,33 @@ function collapseRandom(rec) {
     return true;
 }
 
-function getRnd(arr) {
-    if (arr.length < 1) return undefined;
-    const i = randomI(arr.length);
-    
-    let res = arr[i];
-    if (res == undefined) {
-        return getRnd(arr.slice().splice(i, 1));
+function getRnd(arr, rec) {
+    if (arr.length < 1 || (rec != undefined && rec.length < 1)) return undefined;
+
+    if (rec != undefined) {
+        const i = randomI(rec.length);
+        let res = arr[rec[i]];
+        if (res == undefined) {
+            return getRnd(arr, rec.splice(i, 1));
+        }
+        return res;
+    } else {
+        const i = randomI(arr.length);
+        let res = arr[i];
+        if (res == undefined) {
+            return getRnd(arr, Array.from(arr.keys()).splice(i, 1));
+        }
+        return res;
     }
-    return res;
 }
 function randomI(max) {
     return Math.floor(Math.random() * max);
+}
+function getCell(index) {
+    const c = grid[index];
+    if (c == undefined) {
+        const v = new Cell(false, DUMMY);
+        grid[index] = v;
+        return v;
+    } return c;
 }
